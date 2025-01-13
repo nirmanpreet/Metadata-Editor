@@ -3,7 +3,6 @@ import time
 from datetime import datetime
 import ctypes
 from ctypes import wintypes
-import pywin32
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
