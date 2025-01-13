@@ -3,22 +3,21 @@ import time
 from datetime import datetime
 import ctypes
 from ctypes import wintypes
+import pywin32
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
 # Load the Windows API functions
 kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
 
-# Define necessary Windows API structures and functions for setting file creation time
+# Define necessary Windows API structures and functions
 class FILETIME(ctypes.Structure):
     _fields_ = [("dwLowDateTime", wintypes.DWORD),
                 ("dwHighDateTime", wintypes.DWORD)]
 
+
 def set_creation_time(file_path, creation_time):
-    """
-    This function sets the creation time for a file on Windows by interacting with the Windows API.
-    The creation time is passed as a datetime object, which is converted to the appropriate FILETIME format.
-    """
+    # Convert datetime to FILETIME
     ft = FILETIME()
     timestamp = int(creation_time.timestamp() * 10000000) + 116444736000000000  # Convert to Windows epoch
     ft.dwLowDateTime = timestamp & 0xFFFFFFFF
@@ -43,26 +42,8 @@ def set_creation_time(file_path, creation_time):
     # Close the file handle
     kernel32.CloseHandle(handle)
 
-def get_metadata(file_path):
-    """
-    This function retrieves the metadata for the given file. It returns the creation,
-    modification, and access times as datetime objects.
-    """
-    try:
-        stats = os.stat(file_path)
-        creation_time = datetime.fromtimestamp(stats.st_ctime)  # Creation time
-        access_time = datetime.fromtimestamp(stats.st_atime)  # Last access time
-        modification_time = datetime.fromtimestamp(stats.st_mtime)  # Modification time
-        return creation_time, access_time, modification_time
-    except Exception as e:
-        raise Exception(f"Error retrieving metadata for {file_path}: {str(e)}")
-
 # Function to select a file using the file picker dialog
 def select_file():
-    """
-    This function opens a file picker dialog for the user to select a file. The selected file path
-    is displayed on the GUI, and its current metadata (creation, modification, last access times) is fetched.
-    """
     global file_path  # Ensure file_path is accessible across functions
     file_path = filedialog.askopenfilename(title="Select a File", filetypes=(("All Files", "*.*"),))
     if file_path:
@@ -74,12 +55,26 @@ def select_file():
         file_path_label.config(text="No file selected")
 
 
-# Function to update the creation time (Windows only)
+# Function to fetch and display current file metadata
+def display_file_metadata(file_path):
+    try:
+        stats = os.stat(file_path)
+        creation_time = datetime.fromtimestamp(stats.st_ctime)
+        access_time = datetime.fromtimestamp(stats.st_atime)
+        modification_time = datetime.fromtimestamp(stats.st_mtime)
+
+        # Display current metadata in the UI
+        created_label.config(text=f"Created: {creation_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        modified_label.config(text=f"Modified: {modification_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        access_label.config(text=f"Last Accessed: {access_time.strftime('%Y-%m-%d %H:%M:%S')}")
+
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to retrieve file metadata: {str(e)}")
+        log_message(f"Error retrieving metadata: {str(e)}")
+
+
+# Function to update the created date (Windows only)
 def update_creation_time_windows(file_path, selected_date, selected_time):
-    """
-    This function updates the creation date of a file on Windows using the Windows API.
-    It converts the selected date and time to a datetime object, then calls the API to set the creation time.
-    """
     try:
         # Combine the selected date and time into a datetime object
         date_str = f"{selected_date} {selected_time}"
@@ -98,10 +93,6 @@ def update_creation_time_windows(file_path, selected_date, selected_time):
 
 # Function to update the modified date and also update last accessed date
 def update_modified_time(file_path, selected_date, selected_time):
-    """
-    This function updates the modified time of a file and sets the last accessed time to the same value.
-    The selected date and time are converted to a datetime object and used to update the timestamps.
-    """
     try:
         # Combine the selected date and time into a datetime object
         date_str = f"{selected_date} {selected_time}"
@@ -123,37 +114,34 @@ def update_modified_time(file_path, selected_date, selected_time):
 
 # Function to open the editing window for updating the creation time
 def edit_creation_time():
-    """
-    This function opens a window where the user can select a new creation date and time for the selected file.
-    It validates the date and time input and updates the file's creation time accordingly.
-    """
     if not file_path:
         messagebox.showerror("No file selected", "Please select a file first.")
         return
-
-    # Retrieve the metadata (creation, access, modification times)
-    creation_time, access_time, modification_time = get_metadata(file_path)
 
     # Create the editor window for creation time
     editor_window = tk.Toplevel()
     editor_window.title("Edit Created Time")
     editor_window.geometry("400x300")
 
-    current_time_label = tk.Label(editor_window, text=f"Current Created time: {creation_time}")
+    # Show current metadata for the user
+    creation_time, access_time, modification_time = get_metadata(file_path)
+    current_time = creation_time
+
+    current_time_label = tk.Label(editor_window, text=f"Current Created time: {current_time}")
     current_time_label.pack(pady=10)
 
     # Date Entry
     date_label = tk.Label(editor_window, text="Select Date (YYYY-MM-DD):")
     date_label.pack()
     date_entry = tk.Entry(editor_window)
-    date_entry.insert(0, creation_time.strftime("%Y-%m-%d"))
+    date_entry.insert(0, current_time.strftime("%Y-%m-%d"))
     date_entry.pack(pady=5)
 
     # Time Entry
     time_label = tk.Label(editor_window, text="Select Time (HH:MM:SS):")
     time_label.pack()
     time_entry = tk.Entry(editor_window)
-    time_entry.insert(0, creation_time.strftime("%H:%M:%S"))
+    time_entry.insert(0, current_time.strftime("%H:%M:%S"))
     time_entry.pack(pady=5)
 
     # Save button to update created time
@@ -189,10 +177,6 @@ def edit_creation_time():
 
 # Function to open the editing window for updating the modified time
 def edit_modified_time():
-    """
-    This function opens a window where the user can select a new modified date and time for the selected file.
-    It updates both the modified time and the last accessed time with the new values.
-    """
     if not file_path:
         messagebox.showerror("No file selected", "Please select a file first.")
         return
@@ -250,60 +234,44 @@ def edit_modified_time():
     editor_window.mainloop()
 
 
-# Function to display file metadata
-def display_file_metadata(file_path):
-    """
-    This function displays the file's current metadata (creation, access, and modification times) on the GUI.
-    """
-    try:
-        creation_time, access_time, modification_time = get_metadata(file_path)
-
-        metadata_label.config(text=f"Creation Time: {creation_time}\n"
-                                  f"Last Accessed: {access_time}\n"
-                                  f"Last Modified: {modification_time}")
-    except Exception as e:
-        metadata_label.config(text=f"Error fetching metadata: {str(e)}")
-        log_message(f"Error fetching metadata: {str(e)}")
-
-
-# Function to log messages to the live log window
+# Function to log messages in the log window
 def log_message(message):
-    """
-    This function logs messages to the live log window in the GUI for debugging or informational purposes.
-    """
-    log_box.insert(tk.END, message + "\n")
-    log_box.yview(tk.END)  # Scroll to the bottom of the log box
+    log_text.insert(tk.END, f"{message}\n")
+    log_text.yview(tk.END)
 
 
-# Set up the main window
+# GUI Setup
 root = tk.Tk()
 root.title("File Metadata Editor")
 root.geometry("500x600")
 
-# File Path Label
-file_path_label = tk.Label(root, text="No file selected", width=50, anchor="w")
-file_path_label.pack(pady=10)
+# File selection section
+file_path_label = tk.Label(root, text="No file selected")
+file_path_label.pack(pady=5)
 
-# Buttons to select a file and edit metadata
 select_file_button = tk.Button(root, text="Select File", command=select_file)
-select_file_button.pack(pady=10)
+select_file_button.pack(pady=5)
 
+# Metadata display section
+created_label = tk.Label(root, text="Created: N/A")
+created_label.pack(pady=5)
+
+modified_label = tk.Label(root, text="Modified: N/A")
+modified_label.pack(pady=5)
+
+access_label = tk.Label(root, text="Last Accessed: N/A")
+access_label.pack(pady=5)
+
+# Edit buttons section
 edit_creation_button = tk.Button(root, text="Edit Creation Date", command=edit_creation_time)
 edit_creation_button.pack(pady=5)
 
 edit_modified_button = tk.Button(root, text="Edit Modified Date", command=edit_modified_time)
 edit_modified_button.pack(pady=5)
 
-# Metadata display
-metadata_label = tk.Label(root, text="File Metadata will be displayed here.", justify="left", width=50)
-metadata_label.pack(pady=10)
+# Log window section
+log_text = tk.Text(root, height=10, width=60)
+log_text.pack(pady=10)
 
-# Log box for live logs
-log_label = tk.Label(root, text="Live Log:")
-log_label.pack(pady=5)
-
-log_box = tk.Text(root, height=10, width=50)
-log_box.pack(pady=10)
-
-# Start the main loop
+# Start the GUI
 root.mainloop()
