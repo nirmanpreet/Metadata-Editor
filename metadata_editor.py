@@ -61,25 +61,19 @@ def select_file():
 
 
 # Function to fetch and display current file metadata
-def display_file_metadata(file_path):
+def get_metadata(file_path):
     """
-    This function retrieves and displays the creation, modification, and last access times of a file.
-    It uses the os.stat function to fetch the file's metadata and updates the GUI labels accordingly.
+    This function retrieves the metadata for the given file. It returns the creation,
+    modification, and access times as datetime objects.
     """
     try:
         stats = os.stat(file_path)
-        creation_time = datetime.fromtimestamp(stats.st_ctime)
-        access_time = datetime.fromtimestamp(stats.st_atime)
-        modification_time = datetime.fromtimestamp(stats.st_mtime)
-
-        # Display current metadata in the UI
-        created_label.config(text=f"Created: {creation_time.strftime('%Y-%m-%d %H:%M:%S')}")
-        modified_label.config(text=f"Modified: {modification_time.strftime('%Y-%m-%d %H:%M:%S')}")
-        access_label.config(text=f"Last Accessed: {access_time.strftime('%Y-%m-%d %H:%M:%S')}")
-
+        creation_time = datetime.fromtimestamp(stats.st_ctime)  # Creation time
+        access_time = datetime.fromtimestamp(stats.st_atime)  # Last access time
+        modification_time = datetime.fromtimestamp(stats.st_mtime)  # Modification time
+        return creation_time, access_time, modification_time
     except Exception as e:
-        messagebox.showerror("Error", f"Failed to retrieve file metadata: {str(e)}")
-        log_message(f"Error retrieving metadata: {str(e)}")
+        raise Exception(f"Error retrieving metadata for {file_path}: {str(e)}")
 
 
 # Function to update the creation time (Windows only)
@@ -139,30 +133,29 @@ def edit_creation_time():
         messagebox.showerror("No file selected", "Please select a file first.")
         return
 
+    # Retrieve the metadata (creation, access, modification times)
+    creation_time, access_time, modification_time = get_metadata(file_path)
+
     # Create the editor window for creation time
     editor_window = tk.Toplevel()
     editor_window.title("Edit Created Time")
     editor_window.geometry("400x300")
 
-    # Show current metadata for the user
-    creation_time, access_time, modification_time = get_metadata(file_path)
-    current_time = creation_time
-
-    current_time_label = tk.Label(editor_window, text=f"Current Created time: {current_time}")
+    current_time_label = tk.Label(editor_window, text=f"Current Created time: {creation_time}")
     current_time_label.pack(pady=10)
 
     # Date Entry
     date_label = tk.Label(editor_window, text="Select Date (YYYY-MM-DD):")
     date_label.pack()
     date_entry = tk.Entry(editor_window)
-    date_entry.insert(0, current_time.strftime("%Y-%m-%d"))
+    date_entry.insert(0, creation_time.strftime("%Y-%m-%d"))
     date_entry.pack(pady=5)
 
     # Time Entry
     time_label = tk.Label(editor_window, text="Select Time (HH:MM:SS):")
     time_label.pack()
     time_entry = tk.Entry(editor_window)
-    time_entry.insert(0, current_time.strftime("%H:%M:%S"))
+    time_entry.insert(0, creation_time.strftime("%H:%M:%S"))
     time_entry.pack(pady=5)
 
     # Save button to update created time
@@ -259,47 +252,60 @@ def edit_modified_time():
     editor_window.mainloop()
 
 
-# Function to log messages in the log window
+# Function to display file metadata
+def display_file_metadata(file_path):
+    """
+    This function displays the file's current metadata (creation, access, and modification times) on the GUI.
+    """
+    try:
+        creation_time, access_time, modification_time = get_metadata(file_path)
+
+        metadata_label.config(text=f"Creation Time: {creation_time}\n"
+                                  f"Last Accessed: {access_time}\n"
+                                  f"Last Modified: {modification_time}")
+    except Exception as e:
+        metadata_label.config(text=f"Error fetching metadata: {str(e)}")
+        log_message(f"Error fetching metadata: {str(e)}")
+
+
+# Function to log messages to the live log window
 def log_message(message):
     """
-    This function logs messages in the text area, providing live feedback to the user on the actions performed.
+    This function logs messages to the live log window in the GUI for debugging or informational purposes.
     """
-    log_text.insert(tk.END, f"{message}\n")
-    log_text.yview(tk.END)
+    log_box.insert(tk.END, message + "\n")
+    log_box.yview(tk.END)  # Scroll to the bottom of the log box
 
 
-# GUI Setup
+# Set up the main window
 root = tk.Tk()
 root.title("File Metadata Editor")
 root.geometry("500x600")
 
-# File selection section
-file_path_label = tk.Label(root, text="No file selected")
-file_path_label.pack(pady=5)
+# File Path Label
+file_path_label = tk.Label(root, text="No file selected", width=50, anchor="w")
+file_path_label.pack(pady=10)
 
+# Buttons to select a file and edit metadata
 select_file_button = tk.Button(root, text="Select File", command=select_file)
-select_file_button.pack(pady=5)
+select_file_button.pack(pady=10)
 
-# Metadata display section
-created_label = tk.Label(root, text="Created: N/A")
-created_label.pack(pady=5)
-
-modified_label = tk.Label(root, text="Modified: N/A")
-modified_label.pack(pady=5)
-
-access_label = tk.Label(root, text="Last Accessed: N/A")
-access_label.pack(pady=5)
-
-# Edit buttons section
 edit_creation_button = tk.Button(root, text="Edit Creation Date", command=edit_creation_time)
 edit_creation_button.pack(pady=5)
 
 edit_modified_button = tk.Button(root, text="Edit Modified Date", command=edit_modified_time)
 edit_modified_button.pack(pady=5)
 
-# Log window section
-log_text = tk.Text(root, height=10, width=60)
-log_text.pack(pady=10)
+# Metadata display
+metadata_label = tk.Label(root, text="File Metadata will be displayed here.", justify="left", width=50)
+metadata_label.pack(pady=10)
 
-# Start the GUI
+# Log box for live logs
+log_label = tk.Label(root, text="Live Log:")
+log_label.pack(pady=5)
+
+log_box = tk.Text(root, height=10, width=50)
+log_box.pack(pady=10)
+
+# Start the main loop
 root.mainloop()
