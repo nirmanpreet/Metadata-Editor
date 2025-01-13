@@ -55,7 +55,8 @@ def get_metadata(file_path):
         modification_time = datetime.fromtimestamp(stats.st_mtime)  # Modification time
         return creation_time, access_time, modification_time
     except Exception as e:
-        raise Exception(f"Error retrieving metadata for {file_path}: {str(e)}")
+        print(f"Error: {e}")
+        return None  # Ensure that None is returned in case of error
 
 # Function to select a file using the file picker dialog
 def select_file():
@@ -132,7 +133,12 @@ def edit_creation_time():
         return
 
     # Retrieve the metadata (creation, access, modification times)
-    creation_time, access_time, modification_time = get_metadata(file_path)
+    metadata = get_metadata(file_path)
+    if metadata is None:
+        messagebox.showerror("Error", "Unable to retrieve metadata for the selected file.")
+        return
+    
+    creation_time, access_time, modification_time = metadata
 
     # Create the editor window for creation time
     editor_window = tk.Toplevel()
@@ -203,7 +209,12 @@ def edit_modified_time():
     editor_window.geometry("400x300")
 
     # Show current metadata for the user
-    creation_time, access_time, modification_time = get_metadata(file_path)
+    metadata = get_metadata(file_path)
+    if metadata is None:
+        messagebox.showerror("Error", "Unable to retrieve metadata for the selected file.")
+        return
+    
+    creation_time, access_time, modification_time = metadata
     current_time = modification_time
 
     current_time_label = tk.Label(editor_window, text=f"Current Modified time: {current_time}")
@@ -257,10 +268,12 @@ def display_file_metadata(file_path):
     This function retrieves and displays the metadata for the selected file on the GUI.
     """
     try:
-        creation_time, access_time, modification_time = get_metadata(file_path)
-        metadata_label.config(text=f"Creation Time: {creation_time}\n"
-                                  f"Access Time: {access_time}\n"
-                                  f"Modified Time: {modification_time}")
+        metadata = get_metadata(file_path)
+        if metadata:
+            creation_time, access_time, modification_time = metadata
+            metadata_label.config(text=f"Creation Time: {creation_time}\n"
+                                      f"Access Time: {access_time}\n"
+                                      f"Modified Time: {modification_time}")
     except Exception as e:
         messagebox.showerror("Error", f"Error displaying metadata: {str(e)}")
 
