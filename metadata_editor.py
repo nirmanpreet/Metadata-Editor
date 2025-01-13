@@ -236,8 +236,9 @@ def edit_modified_time():
             messagebox.showerror("Invalid Input", "Please enter a valid date and time.")
             return
 
-        # Update the modified time and last accessed time
+        # Update the modified time (and last accessed time)
         update_modified_time(file_path, selected_date, selected_time)
+
         editor_window.destroy()
 
     save_button = tk.Button(editor_window, text="Save Changes", command=save_modified_time)
@@ -250,20 +251,18 @@ def edit_modified_time():
     editor_window.mainloop()
 
 
-# Function to display file metadata
+# Function to display the file metadata in the GUI
 def display_file_metadata(file_path):
     """
-    This function displays the file's current metadata (creation, access, and modification times) on the GUI.
+    This function retrieves and displays the metadata for the selected file on the GUI.
     """
     try:
         creation_time, access_time, modification_time = get_metadata(file_path)
-
         metadata_label.config(text=f"Creation Time: {creation_time}\n"
-                                  f"Last Accessed: {access_time}\n"
-                                  f"Last Modified: {modification_time}")
+                                  f"Access Time: {access_time}\n"
+                                  f"Modified Time: {modification_time}")
     except Exception as e:
-        metadata_label.config(text=f"Error fetching metadata: {str(e)}")
-        log_message(f"Error fetching metadata: {str(e)}")
+        messagebox.showerror("Error", f"Error displaying metadata: {str(e)}")
 
 
 # Function to log messages in the log box
