@@ -1,0 +1,72 @@
+name: Build and Release Python Executable
+
+on:
+  push:
+    branches:
+      - main  # Trigger on push to the main branch
+
+jobs:
+  build-windows:
+    runs-on: windows-latest  # Windows runner to build the .exe
+
+    outputs:
+      version_tag: ${{ steps.generate_version.outputs.version_tag }}  # Output the version tag to be used in other steps
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Python
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'  # Adjust to your desired Python version
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: pip install pyinstaller
+
+      # Step 4: Build .exe using PyInstaller
+      - name: Run PyInstaller
+        run: python -m PyInstaller --onefile metadata_editor.py  # Adjust if using a spec file
+
+      # Step 5: Generate version tag (with date and time)
+      - name: Generate version tag
+        id: generate_version
+        shell: bash
+        run: |
+          version="v0.0.1-$(date +'%Y%m%d-%H%M%S')"  # Format date as YYYYMMDD-HHMMSS
+          echo "Generated version tag: $version"
+          echo "version_tag=$version" >> $GITHUB_ENV  # Set as an environment variable
+
+      # Step 6: Upload the .exe as an artifact
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Metadata-Editor-${{ env.version_tag }}
+          path: ./dist/metadata_editor.exe  # Path to the built .exe file
+
+      # Step 7: Create a GitHub release with the version tag
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.version_tag }}  # Use the generated version tag
+          release_name: Release ${{ env.version_tag }}  # Name the release with the version (date and time)
+          draft: false
+          prerelease: false
+
+      # Step 8: Upload the release asset (the .exe)
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/metadata_editor.exe  # Path to the .exe file
+          asset_name: Metadata-Editor-Windows-${{ env.version_tag }}.exe  # Name of the asset
+          asset_content_type: application/octet-stream  # Adjust content type if needed
