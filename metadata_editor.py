@@ -43,6 +43,20 @@ def set_creation_time(file_path, creation_time):
     # Close the file handle
     kernel32.CloseHandle(handle)
 
+def get_metadata(file_path):
+    """
+    This function retrieves the metadata for the given file. It returns the creation,
+    modification, and access times as datetime objects.
+    """
+    try:
+        stats = os.stat(file_path)
+        creation_time = datetime.fromtimestamp(stats.st_ctime)  # Creation time
+        access_time = datetime.fromtimestamp(stats.st_atime)  # Last access time
+        modification_time = datetime.fromtimestamp(stats.st_mtime)  # Modification time
+        return creation_time, access_time, modification_time
+    except Exception as e:
+        raise Exception(f"Error retrieving metadata for {file_path}: {str(e)}")
+
 # Function to select a file using the file picker dialog
 def select_file():
     """
@@ -58,22 +72,6 @@ def select_file():
     else:
         file_path = None
         file_path_label.config(text="No file selected")
-
-
-# Function to fetch and display current file metadata
-def get_metadata(file_path):
-    """
-    This function retrieves the metadata for the given file. It returns the creation,
-    modification, and access times as datetime objects.
-    """
-    try:
-        stats = os.stat(file_path)
-        creation_time = datetime.fromtimestamp(stats.st_ctime)  # Creation time
-        access_time = datetime.fromtimestamp(stats.st_atime)  # Last access time
-        modification_time = datetime.fromtimestamp(stats.st_mtime)  # Modification time
-        return creation_time, access_time, modification_time
-    except Exception as e:
-        raise Exception(f"Error retrieving metadata for {file_path}: {str(e)}")
 
 
 # Function to update the creation time (Windows only)
